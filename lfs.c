@@ -38,8 +38,7 @@ int lfs_symlink(const char *from, const char *to)
 }
 */
 int lfs_utime(const char *path, const struct timespec ts[2],
-		       struct fuse_file_info *fi)
-{
+		       struct fuse_file_info *fi){
 	(void) fi;
 	int res;
 
@@ -51,8 +50,7 @@ int lfs_utime(const char *path, const struct timespec ts[2],
 	return 0;
 }
 
-int lfs_mknod(const char *path, mode_t mode, dev_t rdev)
-{
+int lfs_mknod(const char *path, mode_t mode, dev_t rdev){
 	int res;
 
 	/* On Linux this could just be 'mknod(path, mode, rdev)' but this
@@ -71,9 +69,7 @@ int lfs_mknod(const char *path, mode_t mode, dev_t rdev)
 	return 0;
 }
 
-int lfs_write(const char *path, const char *buf, size_t size,
-		     off_t offset, struct fuse_file_info *fi)
-{
+int lfs_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi){
 	int fd;
 	int res;
 
@@ -95,9 +91,7 @@ int lfs_write(const char *path, const char *buf, size_t size,
 	return res;
 }
 
-int lfs_truncate(const char *path, off_t size,
-			struct fuse_file_info *fi)
-{
+int lfs_truncate(const char *path, off_t size, struct fuse_file_info *fi){
 	int res;
 
 	if (fi != NULL)
@@ -109,8 +103,8 @@ int lfs_truncate(const char *path, off_t size,
 
 	return 0;
 }
-int lfs_rename(const char *from, const char *to, unsigned int flags)
-{
+
+int lfs_rename(const char *from, const char *to, unsigned int flags){
 	int res;
 
 	if (flags)
@@ -122,8 +116,8 @@ int lfs_rename(const char *from, const char *to, unsigned int flags)
 
 	return 0;
 }
-int lfs_rmdir(const char *path)
-{
+
+int lfs_rmdir(const char *path){
 	int res;
 
 	res = rmdir(path);
@@ -132,42 +126,30 @@ int lfs_rmdir(const char *path)
 
 	return 0;
 }
-int lfs_unlink(const char *path)
-{
+
+int lfs_unlink(const char *path){
 	int res;
-
 	res = unlink(path);
-	if (res == -1)
+	if (res == -1){
 		return -errno;
-
+	}
 	return 0;
 }
 
 int lfs_getattr( const char *path, struct stat *stbuf ) {
-	int res = 0;
-	printf("getattr: (path=%s)\n", path);
-
 	memset(stbuf, 0, sizeof(struct stat));
-	if( strcmp( path, "/" ) == 0 ) {
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-	} else if( strcmp( path, "/hello" ) == 0 ) {
-		stbuf->st_mode = S_IFREG | 0777;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = 12;
-	} else
-		res = -ENOENT;
-
-	return res;
+	printf("getattr: (path=%s)\n", path);
+	inode *node = malloc(sizeof(inode));
+	if(strcmp("/", path) == 0){
+		memcpy()
+	}
+	return 0;
 }
-int lfs_mkdir(const char *path, mode_t mode)
-{
+int lfs_mkdir(const char *path, mode_t mode){
 	int res;
-
 	res = mkdir(path, mode);
 	if (res == -1)
 		return -errno;
-
 	return 0;
 }
 
@@ -202,9 +184,12 @@ int lfs_release(const char *path, struct fuse_file_info *fi) {
 	printf("release: (path=%s)\n", path);
 	return 0;
 }
-
+int init(){
+	
+	return 0;
+}
 int main( int argc, char *argv[] ) {
+	init();
 	fuse_main( argc, argv, &lfs_oper );
-
 	return 0;
 }
