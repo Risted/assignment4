@@ -3,12 +3,11 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
-int lfs_getattr( const char *, struct stat * );
-int lfs_readdir( const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info * );
-int lfs_open( const char *, struct fuse_file_info * );
-int lfs_read( const char *, char *, size_t, off_t, struct fuse_file_info * );
-int lfs_release(const char *path, struct fuse_file_info *fi);
+#include "lfs.h"
+
+
 
 static struct fuse_operations lfs_oper = {
 	.getattr	= lfs_getattr,
@@ -26,22 +25,64 @@ static struct fuse_operations lfs_oper = {
 	.utime = NULL
 };
 
+entry ino_table[MAX_NO_INODES];
+
+inode *get_ino(const char *path) {
+	int i;
+	entry e;
+	for (i = 0; i < MAX_NO_INODES; i++) {
+		e = ino_table[i];
+		if (strcmp(e.path, path) == 0) {
+			return e.ino;
+		}
+	}
+	return NULL;
+}
+
 int lfs_getattr( const char *path, struct stat *stbuf ) {
-	int res = 0;
+	// int res = 0;
+	inode *ino;
+
 	printf("getattr: (path=%s)\n", path);
 
 	memset(stbuf, 0, sizeof(struct stat));
-	if( strcmp( path, "/" ) == 0 ) {
-		stbuf->st_mode = S_IFDIR | 0755;
-		stbuf->st_nlink = 2;
-	} else if( strcmp( path, "/hello" ) == 0 ) {
-		stbuf->st_mode = S_IFREG | 0777;
-		stbuf->st_nlink = 1;
-		stbuf->st_size = 12;
-	} else
-		res = -ENOENT;
+	// if( strcmp( path, "/" ) == 0 ) {
+	// 	// stbuf->st_mode = S_IFDIR | 0755;
+	// 	// stbuf->st_nlink = 2;
+	// 	stbuf->st_size = ino->size;
+	// 	stbuf->st_atime = ino->t_accessed;
+	// 	stbuf->st_mtime = ino->t_modified;
+	// 	return 0;
+	// }
 
-	return res;
+	ino = get_ino(path);
+
+	if (ino == NULL) {
+		return -ENOMEM; // TODO: better error code
+	}
+
+	if (ino->type == 0) { 			// Directory
+		stbuf->st_size = ino->size;
+		stbuf->st_atime = ino->t_accessed;
+		stbuf->st_mtime = ino->t_modified;
+	} else { 										// File
+		// stbuf->st_mode = S_IFREG | 0777;
+		// stbuf->st_nlink = 1;
+		stbuf->st_size = ino->size;
+		stbuf->st_atime = ino->t_accessed;
+		stbuf->st_mtime = ino->t_modified;
+	}
+
+	// else if( strcmp( path, "/hello" ) == 0 ) {
+	// 	stbuf->st_mode = S_IFREG | 0777;
+	// 	stbuf->st_nlink = 1;
+	// 	stbuf->st_size = 12;
+	// } else {
+	// 	res = -ENOENT;
+	// }
+
+	// return res;
+	return 0;
 }
 
 int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi ) {
