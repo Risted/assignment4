@@ -12,7 +12,7 @@
 static struct fuse_operations lfs_oper = {
 	.getattr	= lfs_getattr,
 	.readdir	= lfs_readdir,
-	.mknod = NULL,
+	.mknod = lfs_mknod,
 	.mkdir = NULL,
 	.unlink = NULL,
 	.rmdir = NULL,
@@ -98,6 +98,36 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 	filler(buf, "hello", NULL, 0);
 
 	return 0;
+}
+
+inode *lfs_mknod(const char *path, int type, int access) {
+	inode *ino;
+	time_t create_time = time(NULL);
+
+	if (type < 0 || type > 1) {
+		return -EINVAL;
+	}
+
+	if (access < 0 || access > 2) {
+		return -EINVAL;
+	}
+
+	ino = malloc(sizeof(inode));
+
+	if (ino == NULL) {
+		return NULL;
+	}
+
+	memset(ino, 0, sizeof(inode));
+
+	ino->name = get_name(path);
+	ino->ID = get_new_ID(path);
+	ino->type = type;
+	ino->access = access;
+	ino->t_accessed = create_time;
+	ino->t_modified = create_time;
+
+	return ino;
 }
 
 //Permission

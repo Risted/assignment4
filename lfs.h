@@ -15,7 +15,7 @@ typedef struct inode {
   int ID;
   int type; // 0 is directory, 1 is a file
   int size;
-  int access;
+  int access; // 0 is read, 1 is write, 2 is read/write
   time_t t_accessed;
   time_t t_modified;
   size_t d_data_pointers[MAX_DIRECT_BLOCKS];
