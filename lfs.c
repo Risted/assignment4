@@ -13,7 +13,7 @@ static struct fuse_operations lfs_oper = {
 	.getattr	= lfs_getattr,
 	.readdir	= lfs_readdir,
 	.mknod = lfs_mknod,
-	.mkdir = NULL,
+	.mkdir = lfs_mkdir,
 	.unlink = NULL,
 	.rmdir = NULL,
 	.truncate = NULL,
@@ -25,15 +25,15 @@ static struct fuse_operations lfs_oper = {
 	.utime = NULL
 };
 
-entry ino_table[MAX_NO_INODES];
+entry *ino_table[MAX_NO_INODES];
 
 inode *get_ino(const char *path) {
 	int i;
-	entry e;
+	entry *e;
 	for (i = 0; i < MAX_NO_INODES; i++) {
 		e = ino_table[i];
-		if (strcmp(e.path, path) == 0) {
-			return e.ino;
+		if (strcmp(e->path, path) == 0) {
+			return e->ino;
 		}
 	}
 	return NULL;
@@ -100,8 +100,18 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 	return 0;
 }
 
-inode *lfs_mknod(const char *path, int type, int access) {
+char *get_name(const char *path) {
+	return NULL;
+}
+
+int get_new_ID(const char *path) {
+	return 0;
+}
+
+int make_ino(const char *path, int type, int access) {
 	inode *ino;
+	entry *ent;
+	char *new_path;
 	time_t create_time = time(NULL);
 
 	if (type < 0 || type > 1) {
@@ -115,19 +125,61 @@ inode *lfs_mknod(const char *path, int type, int access) {
 	ino = malloc(sizeof(inode));
 
 	if (ino == NULL) {
-		return NULL;
+		return -ENOMEM;
 	}
 
 	memset(ino, 0, sizeof(inode));
 
 	ino->name = get_name(path);
 	ino->ID = get_new_ID(path);
+
+	if (ino->ID  == -1) {
+		return -ENFILE;
+	}
+
 	ino->type = type;
 	ino->access = access;
 	ino->t_accessed = create_time;
 	ino->t_modified = create_time;
 
-	return ino;
+	ent = malloc(sizeof(entry));
+
+	if (ent == NULL) {
+		free(ino);
+		return -ENOMEM;
+	}
+
+	new_path = malloc(strlen(path));
+
+	if (new_path == NULL) {
+		free(ino);
+		free(ent);
+		return -ENOMEM;
+	}
+	memcpy(new_path, path, strlen(path));
+
+	ent->path = new_path;
+	ent->ino = ino;
+
+	ino_table[ino->ID] = ent;
+
+	return 0;
+}
+
+int lfs_mknod(const char *path, mode_t mode, dev_t dev) {
+	int res;
+
+	res = make_ino(path, FILE, READWRITE);
+
+	return res;
+}
+
+int lfs_mkdir(const char *path, mode_t mode) {
+	int res;
+
+	res = make_ino(path, DIRECTORY, READWRITE);
+
+	return res;
 }
 
 //Permission

@@ -8,10 +8,18 @@
 
 #define MAX_NAME_LENGTH 8
 #define MAX_DIRECT_BLOCKS 16
+
+#define DIRECTORY 0
+#define FILE 1
+
+#define READ 0
+#define WRITE 1
+#define READWRITE 2
 //#define MAX_INDIRECT_POINTERS 16
 
 typedef struct inode {
-  char name[MAX_NAME_LENGTH];
+  //char name[MAX_NAME_LENGTH];
+  char *name;
   int ID;
   int type; // 0 is directory, 1 is a file
   int size;
@@ -28,11 +36,15 @@ typedef struct entry {
 }entry;
 
 int lfs_getattr(const char *, struct stat *);
+int lfs_mknod(const char *path, mode_t mode, dev_t dev);
+int lfs_mkdir(const char *path, mode_t mode);
 int lfs_readdir(const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
 int lfs_open(const char *, struct fuse_file_info *);
 int lfs_read(const char *, char *, size_t, off_t, struct fuse_file_info *);
 int lfs_release(const char *path, struct fuse_file_info *fi);
 
 inode *get_ino(const char *path);
+char *get_name(const char *path);
+int get_new_ID(const char *path);
 
 #endif
