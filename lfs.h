@@ -5,12 +5,14 @@
 #define SEGMENT_SIZE 1024
 
 #define MAX_NO_INODES 16 //TODO: change later
+#define NO_SEGMENTS 64
 
 #define MAX_NAME_LENGTH 8
 #define MAX_DIRECT_BLOCKS 16
 
 #define DIRECTORY 0
 #define FILE 1
+#define CLEANUP 2
 
 #define READ 0
 #define WRITE 1
@@ -21,8 +23,9 @@ typedef struct inode {
   //char name[MAX_NAME_LENGTH];
   char *name;
   int ID;
-  int type; // 0 is directory, 1 is a file
+  int type; // 0 is directory, 1 is a file (2 for cleanup)
   int size;
+  int d_pointer_count;
   int access; // 0 is read, 1 is write, 2 is read/write
   time_t t_accessed;
   time_t t_modified;
