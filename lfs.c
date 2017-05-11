@@ -85,17 +85,33 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 	// 	return 0;
 	// }
 
+	if (strcmp("/", path) == 0) {
+		printf("THIS HAPPENS\n");
+	}
+
 	ino = get_ino(path);
 
 	if (ino == NULL) {
-		return -ENOMEM; // TODO: better error code
+		return -ERESTART; // TODO: better error code
 	}
 
-	if (ino->type == 0) { 			// Directory
+	printf("ino_ID: %d\n", ino->ID);
+
+	if(strcmp("/", path) == 0){
+		stbuf->st_mode = S_IFDIR | 0777;
 		stbuf->st_size = ino->size;
 		stbuf->st_atime = ino->t_accessed;
 		stbuf->st_mtime = ino->t_modified;
-	} else { 										// File
+		//return 0;
+		//we in root yo!
+	}
+
+	if (ino->type == 0) { 			// Directory
+		stbuf->st_mode = S_IFDIR | 0777;
+		stbuf->st_size = ino->size;
+		stbuf->st_atime = ino->t_accessed;
+		stbuf->st_mtime = ino->t_modified;
+	} else if (ino->type == 1) { 										// File
 		// stbuf->st_mode = S_IFREG | 0777;
 		// stbuf->st_nlink = 1;
 		stbuf->st_size = ino->size;
@@ -119,11 +135,11 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi ) {
 	(void) offset;
 	(void) fi;
-	printf("readdir: (path=%s)\n", path);
+	printf("readdir: (path= %s)\n", path);
 
-	if(strcmp(path, "/") != 0) {
-		return -ENOENT;
-	}
+	// if(strcmp(path, "/") != 0) {
+	// 	return -ENOENT;
+	// }
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
@@ -269,9 +285,12 @@ inode *get_ino(const char *path) {
 
 	for (i = 0; i < MAX_NO_INODES; i++) {
 		e = ino_table[i];
-		if (strcmp(e->path, path) == 0) {
-			printf("get_ino: finish2\n");
-			return e->ino;
+
+		if (e != NULL) {
+			if (strcmp(e->path, path) == 0) {
+				printf("get_ino: finish2\n");
+				return e->ino;
+			}
 		}
 	}
 
