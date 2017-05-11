@@ -26,6 +26,24 @@ static struct fuse_operations lfs_oper = {
 	.utime = lfs_utime
 };
 int *inodeMap;
+
+int get_directory_inode(char * path){
+	//this is if the path is the "/" also called the root
+	if( strcmp("/" , path)==0){
+		return 0;
+	}
+	char * pathCp
+	pathCp = malloc(1+strlen(path));
+	memcpy(pathCp, path,1+strlen(path));
+	int inodeNr = get_directory_inode(dirname(pathCp));
+	inode *i;
+	i = malloc(sizeof(inode));
+	//copy the disks inode info to i
+	memcpy(i , disk + (inodeMap[inodeNr] *
+		BLOCK_SIZE)) , sizeof(inode);
+	
+
+}
 /*
 int lfs_symlink(const char *from, const char *to)
 {
@@ -192,7 +210,7 @@ int init(){
 	current = 0;
 	disk = malloc(SEGMENT_SIZE * NR_INODES);
 
-		
+
 	return 0;
 }
 int main( int argc, char *argv[] ) {
