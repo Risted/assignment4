@@ -72,9 +72,7 @@ int initialize( void ) {
 int lfs_getattr(const char *path, struct stat *stbuf) {
 	// int res = 0;
 	inode *ino;
-
 	printf("getattr: (path=%s)\n", path);
-
 	memset(stbuf, 0, sizeof(struct stat));
 	// if( strcmp( path, "/" ) == 0 ) {
 	// 	// stbuf->st_mode = S_IFDIR | 0755;
@@ -92,7 +90,7 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 	ino = get_ino(path);
 
 	if (ino == NULL) {
-		return -ERESTART; // TODO: better error code
+		return -ENOENT; // TODO: better error code
 	}
 
 	printf("ino_ID: %d\n", ino->ID);
@@ -133,9 +131,14 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 }
 
 int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fi ) {
+	inode *ino;
+	entry *ent;
+	char *path_copy;
+	int ino_idx;
+	int i;
 	(void) offset;
 	(void) fi;
-	printf("readdir: (path= %s)\n", path);
+	printf("readdir: (path=%s)\n", path);
 
 	// if(strcmp(path, "/") != 0) {
 	// 	return -ENOENT;
@@ -144,6 +147,24 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
 	// filler(buf, "hello", NULL, 0);
+
+	ino = get_ino(path);
+
+	if (ino == NULL) {
+		return -ENOTDIR;
+	}
+
+	//for (i = 0; i < ino->d_pointer_count; i++) {
+	for (i = 0; i < 16; i++) {
+		ino_idx = ino->d_data_pointers[i];
+		printf("Test!! %d\n", ino_idx);
+
+		if (ino_idx != -1) {
+			ent = ino_table[ino_idx];
+			printf("File: %s\n", basename(ent->path));
+			filler(buf, basename(ent->path), NULL, 0);
+		}
+	}
 
 	printf("readdir: finish\n");
 	return 0;
@@ -172,13 +193,19 @@ int get_new_ID(const char *path) {
 
 int make_ino(const char *path, int type, int access) {
 	inode *ino;
+	inode *parent_ino;
 	entry *ent;
-	char *new_path;
 	char *path_copy;
+	char *path_copy2;
+	char *parent_path;
+	int i;
+
 	time_t create_time = time(NULL);
 
 	printf("make_ino: begin\n");
 
+
+	// Simple checking of parameters
 	if (type < 0 || type > 1) {
 		return -EINVAL;
 	}
@@ -186,14 +213,18 @@ int make_ino(const char *path, int type, int access) {
 	if (access < 0 || access > 2) {
 		return -EINVAL;
 	}
+	// End of checks
 
-	path_copy = malloc(strlen(path));
+	// Allocations
+	path_copy = malloc(strlen(path)+1);
+	path_copy2 = malloc(strlen(path)+1);
 
 	if (path_copy == NULL) {
 		return -ENOMEM;
 	}
 
-	memcpy(path_copy, path, strlen(path));
+	memcpy(path_copy, path, strlen(path)+1);
+	memcpy(path_copy2, path, strlen(path)+1);
 
 	ino = malloc(sizeof(inode));
 
@@ -203,7 +234,9 @@ int make_ino(const char *path, int type, int access) {
 	}
 
 	memset(ino, 0, sizeof(inode));
+	// End of allocations
 
+	// Set up the new inode
 	ino->name = basename(path_copy);
 	ino->ID = get_new_ID(path);
 
@@ -218,6 +251,12 @@ int make_ino(const char *path, int type, int access) {
 	ino->t_accessed = create_time;
 	ino->t_modified = create_time;
 
+	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+		ino->d_data_pointers[i] = -1;
+	}
+	// End of setup
+
+	// Allocation and setup of entry
 	ent = malloc(sizeof(entry));
 
 	if (ent == NULL) {
@@ -226,20 +265,38 @@ int make_ino(const char *path, int type, int access) {
 		return -ENOMEM;
 	}
 
-	new_path = malloc(strlen(path));
+	// new_path = malloc(strlen(path)+1);
+	//
+	// if (new_path == NULL) {
+	// 	free(path_copy);
+	// 	free(ino);
+	// 	free(ent);
+	// 	return -ENOMEM;
+	// }
+	// memcpy(new_path, path, strlen(path)+1);
+	// ent->path = new_path;
 
-	if (new_path == NULL) {
-		free(path_copy);
-		free(ino);
-		free(ent);
-		return -ENOMEM;
-	}
-	memcpy(new_path, path, strlen(path));
-
-	ent->path = new_path;
+	ent->path = path_copy;
 	ent->ino = ino;
 
 	ino_table[ino->ID] = ent;
+	// End of setup entry
+
+	// Update parent
+	parent_path = dirname(path_copy2);
+	parent_ino = get_ino(parent_path);
+
+	if (parent_ino == NULL) {
+		//FAIL
+	}
+
+	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+		if (parent_ino->d_data_pointers[i] == -1) {
+			parent_ino->d_data_pointers[i] = ino->ID;
+			parent_ino->d_pointer_count++;
+			return 0;
+		}
+	}
 
 	printf("make_ino: finish\n");
 
@@ -287,6 +344,7 @@ inode *get_ino(const char *path) {
 		e = ino_table[i];
 
 		if (e != NULL) {
+			printf("looking at: %s\n", e->path);
 			if (strcmp(e->path, path) == 0) {
 				printf("get_ino: finish2\n");
 				return e->ino;
@@ -326,7 +384,12 @@ int lfs_mkdir(const char *path, mode_t mode) {
 
 	// TODO: Make sure path is ending with "/"
 	res = make_ino(path, DIRECTORY, READWRITE);
-	// TODO: Add . and .. to the directory
+
+	if (res != 0) {
+		return res;
+	}
+
+	// TODO: Add . and .. to the directory, maybe not though,
 	// remember to check if root -> .. is also itself
 	printf("lfs_mkdir: finish\n");
 	return res;
