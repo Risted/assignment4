@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <libgen.h>
 
 #include "lfs.h"
 
@@ -36,6 +37,8 @@ int initialize( void ) {
 	int i;
 	int res;
 
+	printf("INITIALIZING\n");
+
 	current_segment = 0;
 	current_block = 0;
 	disc = malloc(NO_SEGMENTS*SEGMENT_SIZE);
@@ -57,11 +60,12 @@ int initialize( void ) {
 	}
 
 	// Make root
-	res = lfs_mkdir("/", S_IRWXO)
+	res = lfs_mkdir("/", S_IRWXO);
 	if (res != 0) {
 		return res;
 	}
 
+	printf("FINISH INITIALIZING\n");
 	return 0;
 }
 
@@ -108,6 +112,7 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 	// }
 
 	// return res;
+	printf("getattr: finish\n");
 	return 0;
 }
 
@@ -122,8 +127,9 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 
 	filler(buf, ".", NULL, 0);
 	filler(buf, "..", NULL, 0);
-	filler(buf, "hello", NULL, 0);
+	// filler(buf, "hello", NULL, 0);
 
+	printf("readdir: finish\n");
 	return 0;
 }
 
@@ -135,12 +141,16 @@ int get_new_ID(const char *path) {
 	int ID = 0;
 	entry *ent;
 
+	printf("get_new_ID: begin\n");
+
 	while((ent = ino_table[ID]) != NULL) {
 		ID++;
 		if (ID >= MAX_NO_INODES) {
 			return -1; //TODO find error. No free space in ino_table
 		}
 	}
+
+	printf("get_new_ID: finish\n");
 	return ID;
 }
 
@@ -148,7 +158,10 @@ int make_ino(const char *path, int type, int access) {
 	inode *ino;
 	entry *ent;
 	char *new_path;
+	char *path_copy;
 	time_t create_time = time(NULL);
+
+	printf("make_ino: begin\n");
 
 	if (type < 0 || type > 1) {
 		return -EINVAL;
@@ -158,18 +171,29 @@ int make_ino(const char *path, int type, int access) {
 		return -EINVAL;
 	}
 
+	path_copy = malloc(strlen(path));
+
+	if (path_copy == NULL) {
+		return -ENOMEM;
+	}
+
+	memcpy(path_copy, path, strlen(path));
+
 	ino = malloc(sizeof(inode));
 
 	if (ino == NULL) {
+		free(path_copy);
 		return -ENOMEM;
 	}
 
 	memset(ino, 0, sizeof(inode));
 
-	ino->name = basename(path);
+	ino->name = basename(path_copy);
 	ino->ID = get_new_ID(path);
 
 	if (ino->ID  == -1) {
+		free(path_copy);
+		free(ino);
 		return -ENFILE;
 	}
 
@@ -181,6 +205,7 @@ int make_ino(const char *path, int type, int access) {
 	ent = malloc(sizeof(entry));
 
 	if (ent == NULL) {
+		free(path_copy);
 		free(ino);
 		return -ENOMEM;
 	}
@@ -188,6 +213,7 @@ int make_ino(const char *path, int type, int access) {
 	new_path = malloc(strlen(path));
 
 	if (new_path == NULL) {
+		free(path_copy);
 		free(ino);
 		free(ent);
 		return -ENOMEM;
@@ -199,6 +225,8 @@ int make_ino(const char *path, int type, int access) {
 
 	ino_table[ino->ID] = ent;
 
+	printf("make_ino: finish\n");
+
 	return 0;
 }
 
@@ -206,6 +234,9 @@ int rm_ino(const char *path) {
 	inode *ino;
 	entry *ent;
 	int i;
+
+	printf("rm_ino: begin\n");
+
 	ino = get_ino(path);
 	if (ino == NULL) {
 		return -ERESTART;
@@ -217,24 +248,35 @@ int rm_ino(const char *path) {
 	// If it is a file, free all blocks
 	if (ino->type == FILE) {
 		for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
-			free(ino->d_data_pointers[i]);
+			free((void *) ino->d_data_pointers[i]);
 		}
 	}
 	ino_table[ino->ID] = NULL;
 	free(ent->path);
 	free(ent);
 	free(ino);
+
+	printf("rm_ino: finish\n");
+
 	return 0;
 }
+
 inode *get_ino(const char *path) {
 	int i;
 	entry *e;
+
+	printf("get_ino: begin\n");
+
 	for (i = 0; i < MAX_NO_INODES; i++) {
 		e = ino_table[i];
 		if (strcmp(e->path, path) == 0) {
+			printf("get_ino: finish2\n");
 			return e->ino;
 		}
 	}
+
+	printf("get_ino: finish\n");
+
 	return NULL;
 }
 //
@@ -248,16 +290,26 @@ inode *get_ino(const char *path) {
 
 int lfs_mknod(const char *path, mode_t mode, dev_t dev) {
 	int res;
+
+	printf("lfs_mknod: begin\n");
+
 	res = make_ino(path, FILE, READWRITE);
+
+	printf("lfs_mknod: finish\n");
+
 	return res;
 }
 
 int lfs_mkdir(const char *path, mode_t mode) {
 	int res;
+
+	printf("lfs_mkdir: begin\n");
+
 	// TODO: Make sure path is ending with "/"
 	res = make_ino(path, DIRECTORY, READWRITE);
 	// TODO: Add . and .. to the directory
 	// remember to check if root -> .. is also itself
+	printf("lfs_mkdir: finish\n");
 	return res;
 }
 
@@ -270,6 +322,9 @@ int lfs_rmdir(const char *path) {
 	// inode *new_ino;
 	int i;
 	int res;
+
+	printf("lfs_rmdir: begin\n");
+
 	ino = get_ino(path);
 	//free(ino)
 	if (ino == NULL || ino->type == FILE) {
@@ -278,7 +333,7 @@ int lfs_rmdir(const char *path) {
 	// memcpy(new_ino, ino, sizeof(inode));
 	// First call recursively on all sub dirs and simply remove sub files
 	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
-		sub_idx = d_data_pointers[i];
+		sub_idx = ino->d_data_pointers[i];
 		sub_ent = ino_table[sub_idx];
 		sub_ino = sub_ent->ino;
 
@@ -294,47 +349,63 @@ int lfs_rmdir(const char *path) {
 			}
 		}
 	}
-	new_ino->type = CLEANUP;
-	ino_table[new_ino->ID]->ino = new_ino;
+	// new_ino->type = CLEANUP;
+	// ino_table[new_ino->ID]->ino = new_ino;
+	printf("lfs_rmdir: finish\n");
 	return 0;
 }
 
 //Permission
 int lfs_open(const char *path, struct fuse_file_info *fi) {
-    //printf("open: (path=%s)\n", path);
+  printf("open: (path=%s)\n", path);
 	return 0;
 }
 
 int lfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-    //printf("read: (path=%s)\n", path);
+  printf("read: (path=%s)\n", path);
 	memcpy( buf, "Hello\n", 6 );
 	return 6;
 }
 
 int lfs_release(const char *path, struct fuse_file_info *fi) {
-	//printf("release: (path=%s)\n", path);
+	printf("release: (path=%s)\n", path);
 	return 0;
 }
 
 int lfs_write(const char *path, const char *data, size_t size, off_t off, struct fuse_file_info *fi) {
 	inode *ino;
-	inode *new_ino;
+	// inode *new_ino;
+
+	printf("lfs_write: begin\n");
 	ino = get_ino(path);
 	/*if (ino == NULL){
 		lfs_mknod();
 	}*/
-	ino->d_data_pointers = data;
+
+	//ino->d_data_pointers = data; // Not exactly the right way
+
 	// TODO: DO EVERYTHING
+
+
+	printf("lfs_write: finish\n");
+	return 0;
 }
-int purge ( inode *ino ){
+
+int purge (inode *ino){
+	printf("purge: begin\n");
 	//should free EVERYTHING allocated to this ino including sup pointers
 	free(ino->d_data_pointers);
 	//free(ino->id_data_pointers);
 	free(ino);
+	printf("purge: finish\n");
+	return 0;
 }
+
 int cleaner( void ) {
-	int i = 0,res =0;
-	for (i ; i< MAX_INODES ; i++){
+	int i;
+	int res = 0;
+	printf("cleaner: begin\n");
+	for (i = 0; i< MAX_NO_INODES ; i++){
 		inode *temp;
 		temp = ino_table[i]->ino;
 		if (temp->type == 2){
@@ -342,11 +413,13 @@ int cleaner( void ) {
 			purge(temp);
 		}
 	}
+	printf("cleaner: finish\n");
 	return res;
 }
 
 int main( int argc, char *argv[] ) {
 	int res;
+	printf("main: begin\n");
 	res = initialize();
 	if (res != 0) {
 		printf("Couldn't initialize. Try again.\n");
@@ -354,5 +427,6 @@ int main( int argc, char *argv[] ) {
 	}
 	fuse_main( argc, argv, &lfs_oper );
 
+	printf("main: finish\n");
 	return 0;
 }
