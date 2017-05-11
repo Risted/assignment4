@@ -317,7 +317,10 @@ int make_ino(const char *path, int type, int access) {
 
 int rm_ino(const char *path) {
 	inode *ino;
+	inode *parent_ino;
 	entry *ent;
+	char *path_copy;
+	char *parent_path;
 	int i;
 
 	printf("rm_ino: begin\n");
@@ -337,6 +340,30 @@ int rm_ino(const char *path) {
 		}
 	}
 	ino_table[ino->ID] = NULL;
+
+	path_copy = malloc(strlen(path)+1);
+
+	if (path_copy == NULL) {
+		return -ENOMEM;
+	}
+
+	memcpy(path_copy, path, strlen(path)+1);
+
+	parent_path = dirname(path_copy);
+	parent_ino = get_ino(parent_path);
+	// remove_kebab();
+
+	if (parent_ino == NULL) {
+		return -ENOTDIR;
+	}
+
+	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+		if (parent_ino->d_data_pointers[i] == ino->ID) {
+			parent_ino->d_data_pointers[i] = -1;
+			break;
+		}
+	}
+
 	free(ent->path);
 	free(ent);
 	free(ino);
@@ -428,21 +455,32 @@ int lfs_rmdir(const char *path) {
 	// First call recursively on all sub dirs and simply remove sub files
 	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
 		sub_idx = ino->d_data_pointers[i];
-		sub_ent = ino_table[sub_idx];
-		sub_ino = sub_ent->ino;
+		if (sub_idx != -1) {
+			sub_ent = ino_table[sub_idx];
+			sub_ino = sub_ent->ino;
 
-		if (sub_ino->type == DIRECTORY) {
-			res = lfs_rmdir(sub_ent->path);
-			if (res != 0) {
-				return res;
+			if (sub_ino->type == DIRECTORY) {
+				res = lfs_rmdir(sub_ent->path);
+				if (res != 0) {
+					return res;
+				}
+			} else if (sub_ino->type == FILE) { // IF might be redundant
+				res = rm_ino(sub_ent->path);
+				if (res != 0) {
+					return res;
+				}
 			}
-		} else if (sub_ino->type == FILE) { // IF might be redundant
-			res = rm_ino(sub_ent->path);
-			if (res != 0) {
-				return res;
-			}
+
+			ino->d_data_pointers[i] = -1;
 		}
 	}
+
+	// Then remove the actual directory
+	res = rm_ino(path);
+	if (res != 0) {
+		return res;
+	}
+
 	// new_ino->type = CLEANUP;
 	// ino_table[new_ino->ID]->ino = new_ino;
 	printf("lfs_rmdir: finish\n");
