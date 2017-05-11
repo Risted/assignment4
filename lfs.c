@@ -150,9 +150,19 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 
 	ino = get_ino(path);
 
+
 	if (ino == NULL) {
 		return -ENOTDIR;
 	}
+
+	path_copy = malloc(strlen(path)+1);
+	if (path_copy == NULL) {
+		return -ENOMEM;
+	}
+	// memcpy(path_copy, path, strlen(path)+1);
+
+	// path_copy = basename(path_copy);
+	// basename(path_copy);
 
 	//for (i = 0; i < ino->d_pointer_count; i++) {
 	for (i = 0; i < 16; i++) {
@@ -161,8 +171,10 @@ int lfs_readdir( const char *path, void *buf, fuse_fill_dir_t filler, off_t offs
 
 		if (ino_idx != -1) {
 			ent = ino_table[ino_idx];
-			printf("File: %s\n", basename(ent->path));
-			filler(buf, basename(ent->path), NULL, 0);
+			memcpy(path_copy, ent->path, strlen(ent->path)+1);
+			path_copy = basename(path_copy);
+			printf("File: %s\n", path_copy);
+			filler(buf, path_copy, NULL, 0);
 		}
 	}
 
