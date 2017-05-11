@@ -17,7 +17,7 @@ static struct fuse_operations lfs_oper = {
 	.mkdir = lfs_mkdir,
 	.unlink = NULL,
 	.rmdir = lfs_rmdir,
-	.truncate = NULL,
+	.truncate = lfs_truncate,
 	.open	= lfs_open,
 	.read	= lfs_read,
 	.release = lfs_release,
@@ -484,6 +484,10 @@ int lfs_rmdir(const char *path) {
 	// new_ino->type = CLEANUP;
 	// ino_table[new_ino->ID]->ino = new_ino;
 	printf("lfs_rmdir: finish\n");
+	return 0;
+}
+
+int lfs_truncate(const char *, off_t, struct fuse_file_info *fi) {
 	return 0;
 }
 
