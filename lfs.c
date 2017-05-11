@@ -326,17 +326,23 @@ int lfs_write(const char *path, const char *data, size_t size, off_t off, struct
 	ino->d_data_pointers = data;
 	// TODO: DO EVERYTHING
 }
-int purge ( inode ino){
-
+int purge ( inode *ino ){
+	//should free EVERYTHING allocated to this ino including sup pointers
+	free(ino->d_data_pointers);
+	//free(ino->id_data_pointers);
+	free(ino);
 }
 int cleaner( void ) {
-	int i = 0;
+	int i = 0,res =0;
 	for (i ; i< MAX_INODES ; i++){
 		inode *temp;
 		temp = ino_table[i]->ino;
-		purge(temp);
+		if (temp->type == 2){
+			res++;
+			purge(temp);
+		}
 	}
-	return 0;
+	return res;
 }
 
 int main( int argc, char *argv[] ) {
