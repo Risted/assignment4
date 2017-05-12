@@ -17,7 +17,7 @@ static struct fuse_operations lfs_oper = {
 	.mkdir = lfs_mkdir,
 	.unlink = lfs_unlink,
 	.rmdir = lfs_rmdir,
-	.truncate = NULL,
+	.truncate = lfs_truncate,
 	.open	= lfs_open,
 	.read	= lfs_read,
 	.release = lfs_release,
@@ -501,6 +501,10 @@ int lfs_rmdir(const char *path) {
 	return 0;
 }
 
+int lfs_truncate(const char *path, off_t size, struct fuse_file_info *fi) {
+	return 0;
+}
+
 //Permission
 int lfs_open(const char *path, struct fuse_file_info *fi) {
   printf("open: (path=%s)\n", path);
@@ -508,9 +512,25 @@ int lfs_open(const char *path, struct fuse_file_info *fi) {
 }
 
 int lfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
-  printf("read: (path=%s)\n", path);
-	memcpy( buf, "Hello\n", 6 );
-	return 6;
+	inode *ino;
+	int i;
+
+	printf("read: (path=%s)\n", path);
+
+	ino = get_ino(path);
+
+	if (ino == NULL) {
+		return -ENOTDIR;
+	}
+
+	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+		if (ino->d_data_pointers[i] == -1) {
+			break;
+		}
+	}
+
+	memcpy(buf, (void *) ino->d_data_pointers[i-1], size);
+	return size;
 }
 
 int lfs_release(const char *path, struct fuse_file_info *fi) {
@@ -545,8 +565,10 @@ int lfs_write(const char *path, const char *data, size_t size, off_t off, struct
 	memcpy(new_data, data, size);
 
 	for(i = 0; i < MAX_DIRECT_BLOCKS; i++) {
-		if (ino->d_data_pointers[i] != -1) {
+		if (ino->d_data_pointers[i] == -1) {
 			ino->d_data_pointers[i] = (size_t) new_data;
+			ino->size = size;
+			ino->d_pointer_count++;
 			break;
 		}
 	}
@@ -555,7 +577,7 @@ int lfs_write(const char *path, const char *data, size_t size, off_t off, struct
 	}
 
 	printf("lfs_write: finish\n");
-	return 0;
+	return size;
 }
 
 int purge (inode *ino){

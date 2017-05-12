@@ -43,6 +43,7 @@ int lfs_mknod(const char *path, mode_t mode, dev_t dev);
 int lfs_mkdir(const char *path, mode_t mode);
 int lfs_unlink(const char *path);
 int lfs_rmdir(const char *path);
+int lfs_truncate(const char *path, off_t size, struct fuse_file_info *fi);
 int lfs_write(const char *path, const char *data, size_t size, off_t off, struct fuse_file_info *fi);
 int lfs_readdir(const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
 int lfs_open(const char *, struct fuse_file_info *);
