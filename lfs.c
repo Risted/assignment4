@@ -545,7 +545,10 @@ int lfs_read(const char *path, char *buf, size_t size, off_t offset, struct fuse
 	}
 
 	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
-		if (ino->d_data_pointers[i] == -1) {
+		if (ino->d_data_pointers[i] != -1) {
+			memcpy(buf+(strlen(buf)), (void *) ino->d_data_pointers[i], size);
+			offset = offset + strlen(buf);
+
 			break;
 		}
 	}
@@ -562,6 +565,7 @@ int lfs_release(const char *path, struct fuse_file_info *fi) {
 int lfs_write(const char *path, const char *data, size_t size, off_t off, struct fuse_file_info *fi) {
 	inode *ino;
 	void *new_data;
+	int offset;
 	int res;
 	int i;
 	// inode *new_ino;
@@ -582,9 +586,19 @@ int lfs_write(const char *path, const char *data, size_t size, off_t off, struct
 	if (new_data == NULL) {
 		return -ENOMEM;
 	}
-
-	memcpy(new_data, data, size);
-
+	offset = 0;
+	while(strlen(data + (offset * BLOCK_SIZE)) > BLOCK_SIZE){
+		memcpy(new_data, data + (offset * BLOCK_SIZE), BLOCK_SIZE);
+		for(i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+			if (ino->d_data_pointers[i] == -1) {
+				ino->d_data_pointers[i] = (size_t) new_data;
+				ino->size = size;
+				ino->d_pointer_count++;
+				break;
+			}
+		}
+		offset++;
+	}
 	for(i = 0; i < MAX_DIRECT_BLOCKS; i++) {
 		if (ino->d_data_pointers[i] == -1) {
 			ino->d_data_pointers[i] = (size_t) new_data;
