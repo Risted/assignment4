@@ -15,15 +15,15 @@ static struct fuse_operations lfs_oper = {
 	.readdir	= lfs_readdir,
 	.mknod = lfs_mknod,
 	.mkdir = lfs_mkdir,
-	.unlink = NULL,
+	.unlink = lfs_unlink,
 	.rmdir = lfs_rmdir,
-	.truncate = lfs_truncate,
+	.truncate = NULL,
 	.open	= lfs_open,
 	.read	= lfs_read,
 	.release = lfs_release,
 	.write = lfs_write,
 	.rename = NULL,
-	.utime = NULL
+	.utime = lfs_utime
 };
 
 entry **ino_table;
@@ -90,6 +90,7 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 	ino = get_ino(path);
 
 	if (ino == NULL) {
+		printf("getattr: finish, no entry\n");
 		return -ENOENT; // TODO: better error code
 	}
 
@@ -100,6 +101,7 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = ino->size;
 		stbuf->st_atime = ino->t_accessed;
 		stbuf->st_mtime = ino->t_modified;
+		stbuf->st_ctime = time(NULL);
 		//return 0;
 		//we in root yo!
 	}
@@ -109,12 +111,14 @@ int lfs_getattr(const char *path, struct stat *stbuf) {
 		stbuf->st_size = ino->size;
 		stbuf->st_atime = ino->t_accessed;
 		stbuf->st_mtime = ino->t_modified;
+		stbuf->st_ctime = time(NULL);
 	} else if (ino->type == 1) { 										// File
-		// stbuf->st_mode = S_IFREG | 0777;
+		stbuf->st_mode = S_IFREG | 0777;
 		// stbuf->st_nlink = 1;
 		stbuf->st_size = ino->size;
 		stbuf->st_atime = ino->t_accessed;
 		stbuf->st_mtime = ino->t_modified;
+		stbuf->st_ctime = time(NULL);
 	}
 
 	// else if( strcmp( path, "/hello" ) == 0 ) {
@@ -306,9 +310,10 @@ int make_ino(const char *path, int type, int access) {
 		if (parent_ino->d_data_pointers[i] == -1) {
 			parent_ino->d_data_pointers[i] = ino->ID;
 			parent_ino->d_pointer_count++;
-			return 0;
+			break;
 		}
 	}
+
 
 	printf("make_ino: finish\n");
 
@@ -383,15 +388,15 @@ inode *get_ino(const char *path) {
 		e = ino_table[i];
 
 		if (e != NULL) {
-			printf("looking at: %s\n", e->path);
+			// printf("looking at: %s\n", e->path);
 			if (strcmp(e->path, path) == 0) {
-				printf("get_ino: finish2\n");
+				printf("get_ino: finish, found entry\n");
 				return e->ino;
 			}
 		}
 	}
 
-	printf("get_ino: finish\n");
+	printf("get_ino: finish, no entry\n");
 
 	return NULL;
 }
@@ -411,8 +416,13 @@ int lfs_mknod(const char *path, mode_t mode, dev_t dev) {
 
 	res = make_ino(path, FILE, READWRITE);
 
-	printf("lfs_mknod: finish\n");
 
+
+	if (res != 0) {
+		printf("lfs_mknod: finish, res: %d\n", res);
+		return res;
+	}
+	printf("lfs_mknod: finish, no problem\n");
 	return res;
 }
 
@@ -432,6 +442,10 @@ int lfs_mkdir(const char *path, mode_t mode) {
 	// remember to check if root -> .. is also itself
 	printf("lfs_mkdir: finish\n");
 	return res;
+}
+
+int lfs_unlink(const char *path) {
+	return 0;
 }
 
 // TODO: new_ino is allocated on the stack, should be in a segment instead
@@ -487,10 +501,6 @@ int lfs_rmdir(const char *path) {
 	return 0;
 }
 
-int lfs_truncate(const char *, off_t, struct fuse_file_info *fi) {
-	return 0;
-}
-
 //Permission
 int lfs_open(const char *path, struct fuse_file_info *fi) {
   printf("open: (path=%s)\n", path);
@@ -510,18 +520,39 @@ int lfs_release(const char *path, struct fuse_file_info *fi) {
 
 int lfs_write(const char *path, const char *data, size_t size, off_t off, struct fuse_file_info *fi) {
 	inode *ino;
+	void *new_data;
+	int res;
+	int i;
 	// inode *new_ino;
 
 	printf("lfs_write: begin\n");
 	ino = get_ino(path);
-	/*if (ino == NULL){
-		lfs_mknod();
-	}*/
+	if (ino == NULL){
+		printf("This is weird, we shouldn't be here.\nFuck you, get outta here.\n");
+		res = make_ino(path, FILE, READWRITE);
+		if (res != 0) {
+			printf("Double weirdness.\n");
+			return -ERESTART;
+		}
+	}
 
-	//ino->d_data_pointers = data; // Not exactly the right way
+	new_data = malloc(size);
 
-	// TODO: DO EVERYTHING
+	if (new_data == NULL) {
+		return -ENOMEM;
+	}
 
+	memcpy(new_data, data, size);
+
+	for(i = 0; i < MAX_DIRECT_BLOCKS; i++) {
+		if (ino->d_data_pointers[i] != -1) {
+			ino->d_data_pointers[i] = (size_t) new_data;
+			break;
+		}
+	}
+	if (i >= MAX_DIRECT_BLOCKS) {
+		printf("No more blocks\n");
+	}
 
 	printf("lfs_write: finish\n");
 	return 0;
@@ -551,6 +582,10 @@ int cleaner( void ) {
 	}
 	printf("cleaner: finish\n");
 	return res;
+}
+
+int lfs_utime(const char *path, struct utimbuf *utim) {
+	return 0;
 }
 
 int main( int argc, char *argv[] ) {

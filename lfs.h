@@ -41,12 +41,14 @@ typedef struct entry {
 int lfs_getattr(const char *, struct stat *);
 int lfs_mknod(const char *path, mode_t mode, dev_t dev);
 int lfs_mkdir(const char *path, mode_t mode);
+int lfs_unlink(const char *path);
 int lfs_rmdir(const char *path);
 int lfs_write(const char *path, const char *data, size_t size, off_t off, struct fuse_file_info *fi);
 int lfs_readdir(const char *, void *, fuse_fill_dir_t, off_t, struct fuse_file_info *);
 int lfs_open(const char *, struct fuse_file_info *);
 int lfs_read(const char *, char *, size_t, off_t, struct fuse_file_info *);
 int lfs_release(const char *path, struct fuse_file_info *fi);
+int lfs_utime(const char *path, struct utimbuf *utim);
 
 inode *get_ino(const char *path);
 char *get_name(const char *path);
