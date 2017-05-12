@@ -334,16 +334,24 @@ int rm_ino(const char *path) {
 	if (ino == NULL) {
 		return -ERESTART;
 	}
+	printf("rm_ino: 1\n");
+
 	ent = ino_table[ino->ID];
 	if (ent == NULL) {
 		return -ERESTART;
 	}
+	printf("rm_ino: 2\n");
+
 	// If it is a file, free all blocks
 	if (ino->type == FILE) {
 		for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
-			free((void *) ino->d_data_pointers[i]);
+			if (ino->d_data_pointers[i] != -1) {
+				free((void *) ino->d_data_pointers[i]);
+			}
 		}
 	}
+	printf("rm_ino: 3\n");
+
 	ino_table[ino->ID] = NULL;
 
 	path_copy = malloc(strlen(path)+1);
@@ -365,6 +373,7 @@ int rm_ino(const char *path) {
 	for (i = 0; i < MAX_DIRECT_BLOCKS; i++) {
 		if (parent_ino->d_data_pointers[i] == ino->ID) {
 			parent_ino->d_data_pointers[i] = -1;
+			parent_ino->d_pointer_count--;
 			break;
 		}
 	}
@@ -445,6 +454,18 @@ int lfs_mkdir(const char *path, mode_t mode) {
 }
 
 int lfs_unlink(const char *path) {
+	rm_ino(path);
+	// inode ino;
+	// int i;
+	// ino = get_ino(path);
+	// if(ino->type =! FILE){
+	// 	return -EISDIR //TODO not file
+	// }
+	// for(i=0;i<MAX_DIRECT_BLOCKS;i++){
+	// 	free(ino->d_data_pointers[i]);
+	// }
+	// free(ino_table[ino->ID]);
+	// free(ino);
 	return 0;
 }
 
