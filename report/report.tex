@@ -1,0 +1,184 @@
+%%%%% BEGIN Head
+\documentclass[a4paper,10pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[danish,english]{babel}
+\usepackage{graphicx}
+\usepackage[a4paper,margin=2.7cm]{geometry}
+
+\usepackage[sc]{mathpazo} 
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{enumerate}
+\usepackage{longtable}
+
+\usepackage{tikz}
+\usetikzlibrary{arrows,decorations.pathmorphing,backgrounds,positioning,fit,matrix}
+
+%%% Line breaks make som space between lines 
+%   and begin all the way at the left,
+%   out-comment for the standard LaTeX way.
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2ex} 
+
+
+\renewcommand{\vec}[1]{\ensuremath {\mathbf #1}}
+
+\renewcommand{\arraystretch}{1.2}
+
+%%% Settings for the Instructor
+\newcommand{\courseid}{DM510}
+\newcommand{\coursename}{Operating systems}
+\newcommand{\term}{Spring 2017}
+\newcommand{\dept}{Department of Mathematics and Computer Science}
+
+%%% Settings for the Student
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\author{Jonas Andersen}
+\makeatletter
+\let\runauthor\@author
+\let\runtitle\@title
+\makeatother
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{listings}
+\lstset{language=C,
+  basicstyle=\ttfamily\lst@ifdisplaystyle\footnotesize\fi,%\fontfamily{pzc}\selectfont,%
+  stringstyle=\ttfamily,
+  commentstyle=\ttfamily,
+  showstringspaces=false,
+  frame=lines, 
+%  numbers=left,
+  breaklines=true, tabsize=2,
+  extendedchars=true,inputencoding=utf8
+}
+%\lstavoidwhitepre
+
+
+\pagestyle{fancy} 
+\lhead{{\sc \courseid -- \term }} 
+\chead{}
+%\rhead{CPR~nr.~\cprnr}
+\cfoot{Page \thepage\ of \pageref{LastPage}}
+
+\fancypagestyle{plain}{
+\lhead{\dept\\
+University of Southern Denmark, Odense}
+\chead{}
+\rhead{\today\\
+\runauthor}
+\lfoot{}
+\rfoot{}
+%\renewcommand{\headrulewidth}{0pt}
+}
+
+
+\title{\begin{flushleft}
+\vspace{-4ex}
+\courseid~-- \coursename \\[0.2cm]
+{\Large Assignment 4: File System, \term \\[3ex]
+\hrule}
+\end{flushleft}
+}
+
+
+\date{}
+
+%%%%% END Head
+
+
+\begin{document}
+\maketitle
+Group: 
+
+Jonas Andersen (jonan15)
+
+Rikke Steinvig (riste15)
+
+Emil Bløcher (emblo15)
+
+\newpage
+\tableofcontents
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Design}
+\label{design}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%\begin{lstlisting}
+%struct dm510_buffer {
+%	wait_queue_head_t readq, writeq;   // wait queues
+%	char *buffer, *end;                // beginning of buffer, end of buffer
+%	char *rp, *wp;                     // where to read, where to write
+%	int buffersize;
+%	int nreaders, nwriters;            // number of readers/writers.
+%	int maxReaders, maxWriters;
+%	struct semaphore sem;              // mutual exclusion semaphore
+%};
+%
+%struct dm510_device {
+%	struct cdev cdev;                  // Char device structure
+%	struct dm510_buffer *read;         // Pointer to the buffer we want to read from
+%	struct dm510_buffer *write;        // Pointer to the buffer we want to write to
+%};
+%\end{lstlisting}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Sleeping}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Test}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{longtable}{|p{0.06\textwidth}|p{0.17\textwidth}|p{0.26\textwidth}|p{0.2\textwidth}|p{0.2\textwidth}|}
+	\hline
+	\textbf{Time-stamp} & \textbf{Command} & \textbf{Test} & \textbf{Expected output} & \textbf{Actual output} \endhead
+	\hline
+	0:30 & ./dm510\_load & Loads the module, running the init code and setting up the devices. & <Success message> & \textbf{Initialization done!!!} \\ 
+	\hline
+	0:34 & * \newline
+	tests/testOpen & Opens the two devices in read/write mode. When the program terminates the devices are automatically released. & Positive numbers as file descriptors & \textbf{fd0: 3 \newline fd1: 4 \newline Released.\newline Released.} \\ 
+	
+	\hline
+\end{longtable}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusion}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}
